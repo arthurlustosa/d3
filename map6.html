@@ -46,7 +46,7 @@
 			<li><a href="map6.html">6</a></li>
 		</ol>
 		<header>
-			<h1>Estilizar</h1>
+			<h1>Demanda de água por município da Paraíba</h1>
 		</header>
 
 		<div id="chart"></div>
@@ -63,9 +63,10 @@
 
 	<footer></footer>
 
-	<!-- scripts -->
+<!-- scripts -->
 	<script src="js/d3.v4.min.js"></script>
 	<script src="//d3js.org/d3-color.v1.min.js"></script>
+	<script src="//d3js.org/d3-scale-chromatic.v1.min.js"></script>
   <script src="//d3js.org/topojson.v1.min.js"></script>
 	<script>
 		var
@@ -87,31 +88,54 @@
 
     var path = d3.geoPath().projection(projection);
 
-    var color = d3.scaleThreshold();
+    var populacaoScale = d3.scaleThreshold();
+    var demandaScale = d3.scaleThreshold();
 
-    d3.json("data/topo_pb.json", function(error, pb) {
+		d3.queue()
+			.defer(d3.json, "data/topo_pb.json")
+			.defer(d3.csv, "data/populacao_demanda.csv")
+			.await(draw);
+
+    function draw(error, pb, populacaoXdemanda) {
       if (error) throw error;
 
 			var municipios = topojson.feature(pb, pb.objects.geo_pb);
 
-			color
+			populacaoScale
       	.domain([5000, 10000, 30000, 50000, 100000])
-        // Purple
-    		.range([d3.rgb(84, 39, 143, 0.2), d3.rgb(84, 39, 143, 0.4), d3.rgb(84, 39, 143, 0.6), d3.rgb(84, 39, 143, 0.8), d3.rgb(84, 39, 143, 1)]);
-				// Orange
-    		// .range([d3.rgb(248, 80, 44, 0.2), d3.rgb(248, 80, 44, 0.4), d3.rgb(248, 80, 44, 0.6), d3.rgb(248, 80, 44, 0.8), d3.rgb(248, 80, 44, 1)]);
-        // Blue
-    		// .range([d3.rgb(8, 48, 107, 0.2), d3.rgb(8, 48, 107, 0.4), d3.rgb(8, 48, 107, 0.6), d3.rgb(8, 48, 107, 0.8), d3.rgb(8, 48, 107, 1)]);
+				.range([d3.rgb(255, 0, 0, 0.2), d3.rgb(255, 0, 0, 0.4), d3.rgb(255, 0, 0, 0.6), d3.rgb(255, 0, 0, 0.8), d3.rgb(255, 0, 0, 1)]);
+			demandaScale
+      //   .domain([d3.min(populacaoXdemanda, function(d) { return +d.demanda }), d3.max(populacaoXdemanda, function(d) { return +d.demanda })])
+    		// .range(d3.schemeOranges[9]);
 
-      svg.selectAll(".municipio")
+    	.domain([10, 50, 100, 500, 1000, 2500, 3000])
+    		.range(d3.schemeRdBu[7]);
+
+
+      
+
+      svg.selectAll(".municipios")
         .data(municipios.features)
       .enter().append("path")
-        .attr("class", function(d) { return "municipio " + d.id; })
+        .attr("id", function(d) { return "populacao-"+d.properties.codigo_ibg; })
         .attr("d", path)
-        .attr("fill", function(d){ return color(+d.properties.populacao)});
+        .style("opacity", 0.5);
 
+      svg.selectAll(".municipios")
+        .data(municipios.features)
+      .enter().append("path")
+      	.attr("class", function(d) { return "municipio " + d.id; })
+        .attr("id", function(d) { return "demanda-"+d.properties.codigo_ibg; })
+        .attr("d", path)
+        .style("opacity", 0.5);
 
-    });
+			for (var i = 0; i < populacaoXdemanda.length; i++) {
+				svg.select("#populacao-"+populacaoXdemanda[i].id)
+					.attr("fill", populacaoScale(+populacaoXdemanda[i].populacao));
+				svg.select("#demanda-"+populacaoXdemanda[i].id)
+					.attr("fill", demandaScale(+populacaoXdemanda[i].demanda));
+			}
+    }
 		</script>
 
 </body>
